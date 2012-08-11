@@ -4,14 +4,16 @@ import (
 	"io"
 )
 
-type Reader struct {
+type reader struct {
 	r io.Reader
 	state
 }
 
-func NewReader(r io.Reader) *Reader { return &Reader{r, text} }
+// NewReader returns an io.Reader which copies directly from r, ignoring '#' and
+// any characters following it on the same line.
+func NewReader(r io.Reader) io.Reader { return &reader{r, text} }
 
-func (r *Reader) Read(buf []byte) (int, error) {
+func (r *reader) Read(buf []byte) (int, error) {
 	n, err := r.r.Read(buf)
 	buf = buf[:n]
 	var wcount, rcount int
