@@ -7,5 +7,9 @@ import (
 )
 
 func main() {
-	io.Copy(os.Stdout, comments.NewReader(os.Stdin))
+	if len(os.Args) > 1 {
+		io.Copy(os.Stdout, comments.NewCustomReader(os.Stdin, os.Args[1][0]))
+	} else {
+		io.Copy(os.Stdout, comments.NewReader(os.Stdin))
+	}
 }
