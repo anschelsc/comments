@@ -24,7 +24,7 @@ func main() {
 		}
 	}
 
-	delimeters := c2
+	delimeters := c1
 
 	// Try messing around with start and end delimeters
 	rdr := comments.NewCustomReader(source, delimeters[0], delimeters[1])

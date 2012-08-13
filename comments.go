@@ -1,34 +1,29 @@
-// The comments package provides a wrapper for an io.Reader which ignores text
-// inside comments. What comment delimeters can be user defined; default is bash-style.
 package comments
 
 import (
 	"io"
 )
 
-const (
-	defaultStart = '#'
-	defaultStop  = '\n'
-)
+var defaultDelim = &Delim{"#", "\n", true}
+
+type Delim struct {
+	Start, Stop string
+	WriteStop   bool
+}
 
 type reader struct {
 	r io.Reader
 	state
-	start []byte
-	stop  []byte
+	d *Delim
 }
 
 // NewReader returns an io.Reader which copies directly from r, ignoring '#' and
 // any characters following it on the same line.
-func NewReader(r io.Reader) io.Reader {
-	return &reader{r, text, []byte{defaultStart}, []byte{defaultStop}}
-}
+func NewReader(r io.Reader) io.Reader { return NewCustomReader(r, defaultDelim) }
 
-// NewCustomReader is identical to NewReader, except that it accepts custom
-// start and stop delimeters
-func NewCustomReader(r io.Reader, start, stop string) io.Reader {
-	return &reader{r, text, []byte(start), []byte(stop)}
-}
+// NewCustomReader is identical to NewReader, except that it accepts a custom
+// delimeter
+func NewCustomReader(r io.Reader, d *Delim) io.Reader { return &reader{r, fstate(text), d} }
 
 func (r *reader) Read(buf []byte) (int, error) {
 	n, err := r.r.Read(buf)
@@ -36,48 +31,40 @@ func (r *reader) Read(buf []byte) (int, error) {
 	var wcount, rcount int
 	for rcount != len(buf) {
 		var written, read int
-		_ = buf[rcount:]
-		_ = buf[wcount:]
-		written, read, r.state = r.state(buf[wcount:], buf[rcount:], r.start, r.stop)
+		written, read, r.state = r.state.run(buf[wcount:], buf[rcount:], r.d)
 		wcount += written
 		rcount += read
 	}
 	return wcount, err
 }
 
-type state func(dst, src []byte, start, stop []byte) (written, read int, next state)
+type state interface {
+	run(dst, src []byte, d *Delim) (written, read int, next state)
+}
 
-func text(dst, src []byte, start, stop []byte) (written, read int, next state) {
-	dLen := len(start)
-	sLen := len(src)
-CHECK:
+type fstate func(dst, src []byte, d *Delim) (written, read int, next state)
+
+func (f fstate) run(dst, src []byte, d *Delim) (written, read int, next state) { return f(dst, src, d) }
+
+func text(dst, src []byte, d *Delim) (written, read int, next state) {
 	for i, b := range src {
-		if b == start[0] && dLen <= sLen-i {
-			for j := 1; j < dLen; j++ {
-				if src[i+j] != start[j] {
-					continue CHECK
-				}
-			}
-			return i, i + dLen, comment
+		if b == d.Start[0] {
+			return i, i + 1, fstate(comment)
 		}
 		dst[i] = b
 	}
-	return sLen, sLen, text
+	return len(src), len(src), fstate(text)
 }
 
-func comment(dst, src []byte, start, stop []byte) (written, read int, next state) {
-	dLen := len(stop)
-	sLen := len(src)
-CHECK:
+func comment(dst, src []byte, d *Delim) (written, read int, next state) {
 	for i, b := range src {
-		if b == stop[0] && dLen <= sLen-i {
-			for j := 1; j < dLen; j++ {
-				if src[i+j] != stop[j] {
-					continue CHECK
-				}
+		if b == d.Stop[0] {
+			if d.WriteStop {
+				dst[0] = d.Stop[0]
+				return 1, i + 1, fstate(text)
 			}
-			return 0, i + dLen, text
+			return 0, i + 1, fstate(text)
 		}
 	}
-	return 0, sLen, comment
+	return 0, len(src), fstate(comment)
 }
