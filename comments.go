@@ -1,9 +1,7 @@
 package comments
 
 import (
-	"fmt"
 	"io"
-	"os"
 )
 
 const (
