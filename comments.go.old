@@ -5,7 +5,7 @@
 	attempts to maintain that speed by deliniating between character-
 	and string-based readers.  The result is much messier, uglier code,
 	but code that may run slightly faster (although a quick review
-	of the inner loops will demonstrate that such a gain would be minimal).
+	of the inner loops will demonstrate that such a gain is minimal).
 */
 
 package comments
