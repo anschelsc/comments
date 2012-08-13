@@ -1,0 +1,3 @@
+Bash-style
+# OMG LOOK OUT FOR THE BEAR!!!
+comments

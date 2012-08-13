@@ -1,0 +1,6 @@
+C-style
+/* 
+OMG LOOK OUT FOR THE BEAR!!!
+*/
+comments...
+With/* OMG LOOK OUT FOR THE BEAR!!! */ inlining!
