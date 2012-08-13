@@ -1,0 +1,145 @@
+package main
+
+import (
+	"fmt"
+	"io"
+	"os"
+)
+
+func main() {
+	source := os.Stdin
+	if len(os.Args) > 1 {
+		var err error
+		source, err = os.Open(os.Args[1])
+		if err != nil {
+			fmt.Printf("Could not open resource: %v\nUsing stdin\n", os.Args[1])
+			source = os.Stdin
+		}
+	}
+
+	rdr := NewCustomReader(source, "/*", "/")
+	// rdr := NewReader(os.Stdin)
+	io.Copy(os.Stdout, rdr)
+}
+
+const (
+	defaultstart byte = '#'
+	defaultstop  byte = '\n'
+)
+
+type stringReader struct {
+	r io.Reader
+	stringState
+	start []byte
+	stop  []byte
+}
+
+type charReader struct {
+	r io.Reader
+	charState
+	start byte
+	stop  byte
+}
+
+// NewReader returns an io.Reader which copies directly from r, ignoring '#' and
+// any characters following it on the same line.
+func NewReader(r io.Reader) io.Reader {
+	return &charReader{r, charText, defaultstart, defaultstop}
+}
+
+// NewCustomReader is identical to NewReader, except that it accepts custom
+// start and stop delimeters
+func NewCustomReader(r io.Reader, start, stop string) io.Reader {
+	if len(start) == 1 && len(stop) == 1 {
+		return &charReader{r, charText, start[0], stop[0]}
+	}
+	return &stringReader{r, stringText, []byte(start), []byte(stop)}
+}
+
+func (r *charReader) Read(buf []byte) (int, error) {
+	n, err := r.r.Read(buf)
+	buf = buf[:n]
+	var wcount, rcount int
+	for rcount != len(buf) {
+		var written, read int
+		_ = buf[rcount:]
+		_ = buf[wcount:]
+		written, read, r.charState = r.charState(buf[wcount:], buf[rcount:], r.start, r.stop)
+		wcount += written
+		rcount += read
+	}
+	return wcount, err
+}
+
+func (r *stringReader) Read(buf []byte) (int, error) {
+	n, err := r.r.Read(buf)
+	buf = buf[:n]
+	var wcount, rcount int
+	for rcount != len(buf) {
+		var written, read int
+		_ = buf[rcount:]
+		_ = buf[wcount:]
+		written, read, r.stringState = r.stringState(buf[wcount:], buf[rcount:], r.start, r.stop)
+		wcount += written
+		rcount += read
+	}
+	return wcount, err
+}
+
+type charState func(dst, src []byte, start, stop byte) (written, read int, next charState)
+
+func charText(dst, src []byte, start, stop byte) (written, read int, next charState) {
+	for i, b := range src {
+		if b == start {
+			return i, i + 1, charComment
+		}
+		dst[i] = b
+	}
+	return len(src), len(src), charText
+}
+
+func charComment(dst, src []byte, start, stop byte) (written, read int, next charState) {
+	for i, b := range src {
+		if b == stop {
+			return 0, i + 1, charText
+		}
+	}
+	return 0, len(src), charComment
+}
+
+type stringState func(dst, src []byte, start, stop []byte) (written, read int, next stringState)
+
+func stringText(dst, src []byte, start, stop []byte) (written, read int, next stringState) {
+	dLen := len(start)
+	sLen := len(src)
+CHECK:
+	for i, b := range src {
+		if b == start[0] && dLen <= sLen-i {
+			for j := 1; j < dLen; j++ {
+				if src[i+j] != start[j] {
+					continue CHECK
+				}
+			}
+			return i, i + dLen, stringComment
+		}
+		dst[i] = b
+	}
+	return sLen, sLen, stringText
+}
+
+func stringComment(dst, src []byte, start, stop []byte) (written, read int, next stringState) {
+	dLen := len(stop)
+	sLen := len(src)
+CHECK:
+	for i, b := range src {
+		if b == stop[0] && dLen <= sLen-i {
+			for j := 1; j < dLen; j++ {
+				if src[i+j] != stop[j] {
+					continue CHECK
+				}
+			}
+			return 0, i + dLen, stringText
+		}
+	}
+	return 0, sLen, stringComment
+}
