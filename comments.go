@@ -1,3 +1,5 @@
+// The comments package provides a wrapper for an io.Reader which ignores text
+// inside comments. What comment delimeters can be user defined; default is bash-style.
 package comments
 
 import (

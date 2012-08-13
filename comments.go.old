@@ -1,26 +1,18 @@
-package main
+/*
+	This revision of comments took a slightly different approach.
+	anschelsc's original code had dealt exclusively with single-character
+	comments, and thus the code was shorter and faster. This revision
+	attempts to maintain that speed by deliniating between character-
+	and string-based readers.  The result is much messier, uglier code,
+	but code that may run slightly faster (although a quick review
+	of the inner loops will demonstrate that such a gain would be minimal).
+*/
+
+package comments
 
 import (
-	"fmt"
 	"io"
-	"os"
 )
-
-func main() {
-	source := os.Stdin
-	if len(os.Args) > 1 {
-		var err error
-		source, err = os.Open(os.Args[1])
-		if err != nil {
-			fmt.Printf("Could not open resource: %v\nUsing stdin\n", os.Args[1])
-			source = os.Stdin
-		}
-	}
-
-	rdr := NewCustomReader(source, "/*", "/")
-	// rdr := NewReader(os.Stdin)
-	io.Copy(os.Stdout, rdr)
-}
 
 const (
 	defaultstart byte = '#'
