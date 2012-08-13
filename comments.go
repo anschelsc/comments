@@ -62,9 +62,23 @@ func comment(dst, src []byte, d *Delim) (written, read int, next state) {
 			if d.WriteStop {
 				dst[0] = d.Stop[0]
 				return 1, i + 1, fstate(text)
+				return 0, i, &strWriter{d.Stop, fstate(text)}
 			}
 			return 0, i + 1, fstate(text)
 		}
 	}
 	return 0, len(src), fstate(comment)
+}
+
+type strWriter struct {
+	string
+	state
+}
+
+func (s *strWriter) run(dst, _ []byte, _ *Delim) (written, read int, next state) {
+	n := copy(dst, s.string)
+	if n != len(s.string) {
+		panic("Delimiter could not be written back to the buffer. Impossible.")
+	}
+	return n, n, s.state
 }
