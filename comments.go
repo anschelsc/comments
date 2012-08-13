@@ -28,8 +28,6 @@ func (r *reader) Read(buf []byte) (int, error) {
 	var wcount, rcount int
 	for rcount != len(buf) {
 		var written, read int
-		_ = buf[rcount:]
-		_ = buf[wcount:]
 		written, read, r.state = r.state(buf[wcount:], buf[rcount:], r.delim)
 		wcount += written
 		rcount += read
