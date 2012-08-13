@@ -1,3 +1,5 @@
+// The comments package provides a wrapper for an io.Reader which ignores text
+// inside comments. What comment delimeters can be user defined; default is bash-style.
 package comments
 
 import (
@@ -5,22 +7,28 @@ import (
 )
 
 const (
-	defaultDelim byte = '#'
+	defaultStart = '#'
+	defaultStop  = '\n'
 )
 
 type reader struct {
 	r io.Reader
 	state
-	delim byte
+	start []byte
+	stop  []byte
 }
 
 // NewReader returns an io.Reader which copies directly from r, ignoring '#' and
 // any characters following it on the same line.
-func NewReader(r io.Reader) io.Reader { return &reader{r, text, defaultDelim} }
+func NewReader(r io.Reader) io.Reader {
+	return &reader{r, text, []byte{defaultStart}, []byte{defaultStop}}
+}
 
-// NewCustomReader is identical to NewReader, except that it accepts a custom
-// delimeter
-func NewCustomReader(r io.Reader, delim byte) io.Reader { return &reader{r, text, delim} }
+// NewCustomReader is identical to NewReader, except that it accepts custom
+// start and stop delimeters
+func NewCustomReader(r io.Reader, start, stop string) io.Reader {
+	return &reader{r, text, []byte(start), []byte(stop)}
+}
 
 func (r *reader) Read(buf []byte) (int, error) {
 	n, err := r.r.Read(buf)
@@ -30,31 +38,46 @@ func (r *reader) Read(buf []byte) (int, error) {
 		var written, read int
 		_ = buf[rcount:]
 		_ = buf[wcount:]
-		written, read, r.state = r.state(buf[wcount:], buf[rcount:], r.delim)
+		written, read, r.state = r.state(buf[wcount:], buf[rcount:], r.start, r.stop)
 		wcount += written
 		rcount += read
 	}
 	return wcount, err
 }
 
-type state func(dst, src []byte, delim byte) (written, read int, next state)
+type state func(dst, src []byte, start, stop []byte) (written, read int, next state)
 
-func text(dst, src []byte, delim byte) (written, read int, next state) {
+func text(dst, src []byte, start, stop []byte) (written, read int, next state) {
+	dLen := len(start)
+	sLen := len(src)
+CHECK:
 	for i, b := range src {
-		if b == delim {
-			return i, i + 1, comment
+		if b == start[0] && dLen <= sLen-i {
+			for j := 1; j < dLen; j++ {
+				if src[i+j] != start[j] {
+					continue CHECK
+				}
+			}
+			return i, i + dLen, comment
 		}
 		dst[i] = b
 	}
-	return len(src), len(src), text
+	return sLen, sLen, text
 }
 
-func comment(dst, src []byte, delim byte) (written, read int, next state) {
+func comment(dst, src []byte, start, stop []byte) (written, read int, next state) {
+	dLen := len(stop)
+	sLen := len(src)
+CHECK:
 	for i, b := range src {
-		if b == '\n' {
-			dst[0] = '\n'
-			return 1, i + 1, text
+		if b == stop[0] && dLen <= sLen-i {
+			for j := 1; j < dLen; j++ {
+				if src[i+j] != stop[j] {
+					continue CHECK
+				}
+			}
+			return 0, i + dLen, text
 		}
 	}
-	return 0, len(src), comment
+	return 0, sLen, comment
 }

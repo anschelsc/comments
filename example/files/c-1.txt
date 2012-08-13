@@ -1,0 +1,3 @@
+C-style
+// OMG LOOK OUT FOR THE BEAR!!!
+comments
