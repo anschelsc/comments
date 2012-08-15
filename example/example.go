@@ -26,7 +26,7 @@ func main() {
 		}
 	}
 
-	delim := c2
+	delim := bash
 
 	// Try messing around with start and end delimeters
 	rdr := comments.NewCustomReader(source, delim[0], delim[1], delim[2])
