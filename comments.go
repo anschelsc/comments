@@ -12,7 +12,7 @@ var (
 )
 
 type delim struct {
-	// Delimeter byte sequence
+	// delimiter byte sequence
 	del []byte
 	// Buffer of back-write characters
 	buf    []byte
@@ -40,9 +40,9 @@ func NewReader(r io.Reader) io.Reader {
 }
 
 // NewCustomReader is identical to NewReader, except that it accepts a custom
-// start and stop delimeters, and an optional string to append after comments end.
+// start and stop delimiters, and an optional string to append after comments end.
 // This may be useful for single-line comments (like bash's # or C's //) whose
-// stop delimeter is a newline.
+// stop delimiter is a newline.
 //
 // NOTE: append MUST NOT BE longer than end; this will cause undefined behavior
 // and possibly a nil-pointer dereference.

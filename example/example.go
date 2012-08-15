@@ -28,7 +28,7 @@ func main() {
 
 	delim := bash
 
-	// Try messing around with start and end delimeters
+	// Try messing around with start and end delimiters
 	rdr := comments.NewCustomReader(source, delim[0], delim[1], delim[2])
 	io.Copy(os.Stdout, rdr)
 }
